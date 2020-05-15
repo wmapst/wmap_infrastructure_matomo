@@ -1,0 +1,85 @@
+version: '3.3'
+
+services:
+  matomo_db:
+    image: mysql:5.7
+    container_name: matomo_db
+    restart: always
+    volumes:
+       - ./data:/var/lib/mysql
+       - ./mysql-conf/my.cnf:/etc/mysql/my.cnf
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_USER_PASS}
+      TZ: 'Asia/Tokyo'
+    networks: 
+      app_net: 
+        ipv4_address: '172.18.0.2'
+
+  matomo_php:
+    image: matomo:fpm-alpine
+    container_name: matomo_php
+    depends_on:
+       - matomo_db
+    restart: always
+    volumes:
+       - ./matomo:/var/www/html
+       - ./php-conf/php.ini:/usr/local/etc/php/php.ini
+       - ./php-conf/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    environment:
+      MATOMO_DATABASE_HOST: matomo_db
+      MATOMO_DATABASE_ADAPTER: mysql
+      MATOMO_DATABASE_TABLES_PREFIX: matomo_
+      MATOMO_DATABASE_USERNAME: ${DB_USER}
+      MATOMO_DATABASE_PASSWORD: ${DB_USER_PASS}
+      MATOMO_DATABASE_DBNAME: ${DB_NAME}
+      TZ: 'Asia/Tokyo'
+    networks: 
+      app_net: 
+        ipv4_address: '172.18.0.3'
+
+  matomo_web:
+    image: nginx
+    container_name: matomo_web
+    depends_on:
+       - matomo_php
+    restart: always
+    volumes:
+       - ./nginx-conf/default.conf:/etc/nginx/conf.d/default.conf
+       - ./matomo:/var/www/html
+       - ./web-logs:/var/log/nginx
+    environment:
+      TZ: 'Asia/Tokyo'
+    networks: 
+      app_net: 
+        ipv4_address: '172.18.0.4'
+
+  https-portal:
+    image: steveltn/https-portal:latest
+    container_name: https-portal
+    depends_on:
+       - matomo_web
+    ports:
+       - '80:80'
+       - '443:443'
+    restart: always
+    volumes:
+       - ./ssl_certs:/var/lib/https-portal
+    environment:
+      DOMAINS: '${HOST_DOMAIN} -> http://matomo_web:80/'
+      STAGE: '${PRODUCTION_STAGE}'
+      CLIENT_MAX_BODY_SIZE: 64M
+      TZ: 'Asia/Tokyo'
+    networks: 
+      app_net: 
+        ipv4_address: '172.18.0.5'
+
+networks:
+  app_net: 
+    driver: bridge
+    ipam: 
+      driver: default
+      config:
+       - subnet: '172.18.0.0/16'
