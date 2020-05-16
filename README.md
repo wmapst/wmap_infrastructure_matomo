@@ -7,6 +7,9 @@ https://github.com/matomo-org/docker/blob/master/.examples/nginx/docker-compose.
 ## Blog
 https://www.wmapst.net/programming/20200515-matomo-docker-compose-ssl/
 
+## MATOMO DB構造
+https://github.com/wmapst/wmap_infrastructure_matomo/blob/master/database_structure.md
+
 ## 使い方
 ```
 git clone https://github.com/wmapst/wmap_infrastructure_matomo.git
